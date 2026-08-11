@@ -1,0 +1,24 @@
+# Dependencies - these get installed fresh inside the container via
+# "npm ci". Copying your host machine's node_modules in would be wrong
+# (different OS/architecture binaries) and would bloat the build context.
+node_modules
+
+# Previous local production build - we want Docker to build this itself,
+# not use a possibly stale copy from your machine.
+build
+
+# Git metadata - irrelevant to the running application
+.git
+.gitignore
+
+# Environment files - should never be baked into an image
+.env
+.env.local
+.env.*.local
+
+# Editor/OS junk
+.vscode
+.DS_Store
+
+# Logs
+npm-debug.log*

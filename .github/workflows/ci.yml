@@ -1,0 +1,67 @@
+# Name shown in the GitHub Actions tab for each run of this workflow
+name: CI
+
+# --- WHEN does this workflow run? ---
+on:
+  push:
+    branches: [master]        # runs whenever you push commits to master
+  pull_request:
+    branches: [master]        # runs on any PR that targets master
+
+# --- WHAT does it run? ---
+jobs:
+  build-and-test:
+    # The workflow needs a machine to run on. This requests a fresh
+    # Ubuntu Linux VM from GitHub - clean every single run, nothing
+    # left over from previous runs.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Get your repository's code onto the runner.
+      # Without this, the runner is an empty VM with no access to your files.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install the Node.js version this project needs.
+      # This uses GitHub's official setup-node action, which also enables
+      # caching of npm downloads so repeat runs are faster.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Step 3: Install dependencies.
+      # Using npm install here to match what currently works locally
+      # (see Dockerfile comment - package-lock.json has some drift from
+      # package.json right now). Once that's cleaned up, npm ci is the
+      # better choice here for the same reproducibility reasons.
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run the test suite.
+      # CI=true is important: react-scripts test normally runs in
+      # interactive watch mode, which never exits on its own - that would
+      # hang forever on a CI runner. Setting CI=true makes Create React
+      # App's test runner do a single non-watch run and exit with a
+      # pass/fail status, which is what a pipeline needs.
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+
+      # Step 5: Create the production build.
+      # This proves the app actually compiles cleanly, independent of
+      # whether it gets containerized successfully afterwards.
+      - name: Build application
+        run: npm run build
+
+      # Step 6: Build the Docker image using the Dockerfile in the repo
+      # root. This exercises the exact same multi-stage build you tested
+      # locally, but now on a clean machine with no local Docker cache or
+      # leftover state - a stronger proof that the Dockerfile is correct.
+      # Note: this only builds and stores the image on the runner. It is
+      # NOT pushed anywhere yet - the runner and its image are discarded
+      # once the workflow finishes.
+      - name: Build Docker image
+        run: docker build -t textutills:ci .
