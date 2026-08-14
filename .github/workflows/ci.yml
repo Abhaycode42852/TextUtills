@@ -6,7 +6,8 @@ on:
   push:
     branches: [master]        # runs whenever you push commits to master
   pull_request:
-    branches: [master]        # runs on any PR that targets master
+    branches: [master]  
+  workflow_dispatch:       # runs on any PR that targets master
 
 # --- WHAT does it run? ---
 jobs:
