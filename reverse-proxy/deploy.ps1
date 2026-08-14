@@ -6,7 +6,7 @@
 $Image = "abhaysingh42852/textutills:latest"
 $Network = "textutills-net"
 $ProxyContainer = "textutills-proxy"
-$ActiveContainer = "textutils-active"
+$ActiveContainer = "textutills-active"
 $NewContainer = "textutils-new"
 
 Write-Host "== Checking for a new image =="
