@@ -63,5 +63,22 @@ jobs:
       # Note: this only builds and stores the image on the runner. It is
       # NOT pushed anywhere yet - the runner and its image are discarded
       # once the workflow finishes.
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build Docker image
-        run: docker build -t textutills:ci .
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/textutills:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/textutills:${{ github.sha }} \
+            .
+
+      - name: Push Docker image to Docker Hub
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/textutills:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/textutills:${{ github.sha }}
