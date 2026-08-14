@@ -1,0 +1,58 @@
+services:
+  # The actual TextUtils app. This starts as the initial "active"
+  # container - deploy.sh will later swap what's running under this
+  # same name whenever a new image is deployed.
+  app:
+    image: ${DOCKERHUB_USERNAME}/textutills:latest
+    container_name: textutills-active
+    restart: unless-stopped
+    networks: [textutills-net]
+
+  # Reverse proxy - the one stable, always-on entry point for the app.
+  # Only this container publishes a port to the host.
+  proxy:
+    image: nginx:1.27-alpine
+    container_name: textutills-proxy
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "8080:80"
+    volumes:
+      - ./reverse-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [textutills-net]
+
+  # Webhook listener - receives a notification from Watchtower when a
+  # new image is found, and runs deploy.sh to perform the blue-green
+  # swap. Has Docker socket access, so it can control sibling containers.
+  deploy-listener:
+    build: ./reverse-proxy/webhook-listener
+    container_name: deploy-listener
+    restart: unless-stopped
+    depends_on: [proxy]
+    environment:
+      - DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [textutills-net]
+
+  # Watchtower - polls Docker Hub for a newer image of the app.
+  # --monitor-only: never replaces the container itself, only notifies.
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    depends_on: [deploy-listener]
+    command:
+      - "--interval"
+      - "300"
+      - "--monitor-only"
+      - "--notification-url"
+      - "generic+http://deploy-listener:9000/hooks/deploy"
+      - "textutills-active"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [textutills-net]
+
+networks:
+  textutills-net:
+    name: textutills-net
